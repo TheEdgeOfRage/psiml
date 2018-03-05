@@ -13,35 +13,34 @@
 
 import copy
 import cv2 as cv
+import itertools as it
 import numpy as np
 
 def main():
-	for k in range(1, 11):
-	#  for k in [5]:
-		filename = 'set/A' + str(k) + '.png'
-		src = cv.imread(filename)
+	#  filename = 'set/A' + str(k) + '.png'
+	filename = raw_input()
+	src = cv.imread(filename)
 
-		box = find_resistor(src)
+	box = find_resistor(src)
 
-		if box is None:
-			continue
+	if box is None:
+		print '221G'
+		return
 
-		src = crop_resistor(src, box)
+	src = crop_resistor(src, box)
 
-		if len(src) is 0:
-			continue
+	if len(src) is 0:
+		print '221G'
+		return
 
-		simple = simplify_image(src)
-		find_bands(simple)
+	simple = simplify_image(src)
+	code = find_bands(simple)
+	if code[0] is 'G':
+		code = code[::-1]
 
-		#  src = src.mean(3)
-		#  print src[0]
-		#  s = None
-		#  cv.reduce(src, s, 0, cv.REDUCE_SUM, cv.CV_32S)
-
-		cv.imshow(str(k), simple)
-		cv.waitKey()
-		#  cv.imwrite(str(k) + '.png', simple)
+	code = code.replace("G", "") + '888'
+	code = code[:3] + 'G'
+	print code
 
 
 def rotate_pt(box, off, phi):
@@ -83,12 +82,12 @@ def find_resistor(img):
 	kernel = np.ones((9, 9), np.uint8)
 	img = cv.dilate(img, kernel, 2)
 	img = cv.erode(img, kernel, 2)
-	img, contours, hierarchy = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+	img, contours, _ = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 	rect = None
 
 	if len(contours) is not 0:
-		max_index, max_area = max(enumerate([cv.contourArea(x) for x in contours]), key = lambda x: x[1])
-		max_contour = contours[max_index]
+		ind, _ = max(enumerate([cv.contourArea(x) for x in contours]), key = lambda x: x[1])
+		max_contour = contours[ind]
 		rect = cv.minAreaRect(max_contour)
 		rect = cv.boxPoints(rect)
 
@@ -121,6 +120,8 @@ def crop_resistor(img, box):
 	h = box[1][1] - box[0][1]
 	y += int(0.2 * h)
 	h = int(0.6 * h)
+	x += int(0.15 * w)
+	w = int(0.7 * w)
 	img = img[y:(y+h), x:(x+w)]
 
 	return img
@@ -131,7 +132,7 @@ def simplify_image(img):
 	#  img = cv.filter2D(img, -1, kernel)
 
 	h, w, c = img.shape
-	simple = np.zeros((10, w, 3), np.uint8)
+	simple = np.zeros((1, w, 3), np.uint8)
 	for i in range(w):
 		sumB = 0
 		sumR = 0
@@ -141,8 +142,9 @@ def simplify_image(img):
 			sumR += img[j, i, 1]
 			sumG += img[j, i, 2]
 
-		for k in range(10):
-			simple[k, i] = [ sumB/h, sumR/h, sumG/h ]
+		simple[0, i] = [ sumB/h, sumR/h, sumG/h ]
+		#  for k in range(10):
+			#  simple[k, i] = [ sumB/h, sumR/h, sumG/h ]
 
 	N = 16;
 	simple  /= N;
@@ -156,17 +158,53 @@ def find_bands(img):
 	hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV);
 	h, w, c = img.shape
 
+	#  check_color(hsv[0, 0])
 	#  while hsv[0, i][0] >= 0 and i < w:
-	while i < w:
-		check_color(hsv[0, i])
-		i += 1
+	band_colors = []
+	for i in range(w):
+		band_colors.append(check_color(hsv[0, i]))
+
+	band_colors = [k for k, g in it.groupby(band_colors) if sum(1 for _ in g) > 2]
+	band_colors = filter(None, band_colors)
+	return ''.join(band_colors)
 
 
 def check_color(px):
-	print px
+	pColors = {}
+	pColors['0'] = np.mean(check_color_range(px[0], px[1], px[2], 'black') or[ 0 ])
+	pColors['1'] = np.mean(check_color_range(px[0], px[1], px[2], 'brown') or[ 0 ])
+	pColors['2'] = np.mean(check_color_range(px[0], px[1], px[2], 'red') or[ 0 ])
+	pColors['3'] = np.mean(check_color_range(px[0], px[1], px[2], 'orange') or[ 0 ])
+	pColors['4'] = np.mean(check_color_range(px[0], px[1], px[2], 'yellow') or[ 0 ])
+	pColors['5'] = np.mean(check_color_range(px[0], px[1], px[2], 'green') or[ 0 ])
+	pColors['6'] = np.mean(check_color_range(px[0], px[1], px[2], 'blue') or[ 0 ])
+	pColors['7'] = np.mean(check_color_range(px[0], px[1], px[2], 'purple') or[ 0 ])
+	pColors['8'] = np.mean(check_color_range(px[0], px[1], px[2], 'gray') or[ 0 ])
+	pColors['9'] = np.mean(check_color_range(px[0], px[1], px[2], 'white') or[ 0 ])
+	pColors['G'] = np.mean(check_color_range(px[0], px[1], px[2], 'gold') or[ 0 ])
+	best = max(pColors, key=pColors.get)
+	best = None if pColors[best] < 0.1 else best
+	return best
 
-#  def check_color_range(h, s, v, col):
-	#  if (h > col.lowH)
+
+def check_color_range(h, s, v, color_str):
+	col = colors[color_str]
+	if h >= col['lowH'] and h <= col['highH'] and s >= col['lowS'] and s <= col['highS'] and v >= col['lowV'] and v <= col['highV']:
+		if color_str == 'red':
+			diff = 180 - col['lowH']
+			h = calculate_offset(h + diff, col['highH'] + diff, 0)
+		else:
+			h = calculate_offset(h, col['highH'], col['lowH'])
+
+		s = calculate_offset(s, col['highS'], col['lowS'])
+		v = calculate_offset(v, col['highV'], col['lowV'])
+		return [h, s, v]
+	return None
+
+
+def calculate_offset(x, high, low):
+	m = (high - low) / 2.0
+	return 1 - abs((x - m) / (high - m))
 
 
 colors = {
@@ -174,9 +212,9 @@ colors = {
 		'lowH': 0,
 		'highH': 179,
 		'lowS': 0,
-		'highS': 121,
+		'highS': 10,
 		'lowV': 0,
-		'highV': 57,
+		'highV': 40,
 	},
 	'brown': {
 		'lowH': 3,
@@ -204,7 +242,7 @@ colors = {
 	},
 	'yellow': {
 		'lowH': 20,
-		'highH': 30,
+		'highH': 32,
 		'lowS': 190,
 		'highS': 255,
 		'lowV': 100,
@@ -213,7 +251,7 @@ colors = {
 	'green': {
 		'lowH': 45,
 		'highH': 80,
-		'lowS': 120,
+		'lowS': 80,
 		'highS': 255,
 		'lowV': 30,
 		'highV': 150,
@@ -238,9 +276,9 @@ colors = {
 		'lowH': 0,
 		'highH': 80,
 		'lowS': 0,
-		'highS': 85,
-		'lowV': 100,
-		'highV': 190,
+		'highS': 30,
+		'lowV': 90,
+		'highV': 220,
 	},
 	'white': {
 		'lowH': 0,
@@ -251,12 +289,12 @@ colors = {
 		'highV': 255,
 	},
 	'gold': {
-		'lowH': 15,
-		'highH': 30,
+		'lowH': 10,
+		'highH': 20,
 		'lowS': 160,
 		'highS': 230,
 		'lowV': 100,
-		'highV': 200,
+		'highV': 160,
 	},
 }
 
