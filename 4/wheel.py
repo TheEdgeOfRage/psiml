@@ -10,8 +10,8 @@ import numpy as np
 import os
 
 def main():
-	#  root = raw_input()
-	root = 'set/example_4'
+	root = raw_input()
+	#  root = 'set/example_4'
 	filename = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
 	filename.sort()
 	filename = os.path.join(root, filename[0])
