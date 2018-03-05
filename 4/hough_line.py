@@ -1,66 +1,62 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
 # Copyright © 2018 pavle <pavle.portic@tilda.center>
 #
 # Distributed under terms of the MIT license.
-"""
-@file hough_lines.py
-@brief This program demonstrates line finding with the Hough transform
-"""
+
 import sys
 import math
 import cv2 as cv
+import os
 import numpy as np
+
 def main(argv):
+	root = raw_input()
+	#  root = 'set/example_4'
+	filename = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
+	filename.sort()
+	filename = os.path.join(root, filename[0])
 
-	default_file =  "set/example_2/frame_0001.png"
-	filename = argv[0] if len(argv) > 0 else default_file
-	# Loads an image
-	src = cv.imread(filename, cv.IMREAD_GRAYSCALE)
-	# Check if image is loaded fine
-	if src is None:
-		print ('Error opening image!')
-		print ('Usage: hough_lines.py [image_name -- default ' + default_file + '] \n')
-		return -1
+	src = cv.imread(filename)
+	img = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
+
+	canny = cv.Canny(img, 50, 200, None, 3)
+	lines = detect_lines(canny)
+	for l in lines:
+		cv.line(src, (l[0], l[1]), (l[2], l[3]), (0,0,255), 1, cv.LINE_AA)
+
+	circle = detect_circle(img)
+	print circle[0], circle[1], len(lines)/2, 0, 0, 0, 0
+
+	#  cv.imshow("Probabilistic Line Transform", src)
+	#  cv.imshow("Canny", canny)
+	#  cv.waitKey()
+
+	return 0
 
 
-	dst = cv.Canny(src, 50, 200, None, 3)
-
-	# Copy edges to the images that will display the results in BGR
-	#  cdst = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-	cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-	#  cdstP = np.copy(cdst)
-
-	#  lines = cv.HoughLines(dst, 1, np.pi / 180, 150, None, 0, 0)
-
-	#  if lines is not None:
-		#  for i in range(0, len(lines)):
-			#  rho = lines[i][0][0]
-			#  theta = lines[i][0][1]
-			#  a = math.cos(theta)
-			#  b = math.sin(theta)
-			#  x0 = a * rho
-			#  y0 = b * rho
-			#  pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-			#  pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-			#  cv.line(cdst, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
-
-	linesP = cv.HoughLinesP(dst, 1, np.pi / 180, 40, None, 40, 50)
-	print len(linesP)
+def detect_lines(img):
+	linesP = cv.HoughLinesP(img, 1, np.pi / 180, 45, None, 30, 50)
+	lines = []
 
 	if linesP is not None:
 		for i in range(0, len(linesP)):
-			l = linesP[i][0]
-			cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+			lines.append(linesP[i][0])
 
-	cv.imshow("Source", src)
-	#  cv.imshow("Detected Lines (in red) - Standard Hough Line Transform", cdst)
-	cv.imshow("Detected Lines (in red) - Probabilistic Line Transform", cdstP)
+	return lines
 
-	cv.waitKey()
-	return 0
+
+def detect_circle(img):
+	rows = img.shape[0]
+	circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT, 1, rows/16, 100, 100, 30, 1, 50)
+
+	if circles is not None:
+		circles = np.uint16(np.around(circles))
+		return circles[0][0][0], circles[0][0][1]
+
+	return 0, 0
+
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
