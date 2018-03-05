@@ -5,13 +5,11 @@
 #
 # Distributed under terms of the MIT license.
 
-import sys
-import math
 import cv2 as cv
-import os
 import numpy as np
+import os
 
-def main(argv):
+def main():
 	root = raw_input()
 	#  root = 'set/example_4'
 	filename = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
@@ -27,7 +25,10 @@ def main(argv):
 		cv.line(src, (l[0], l[1]), (l[2], l[3]), (0,0,255), 1, cv.LINE_AA)
 
 	circle = detect_circle(img)
-	print circle[0], circle[1], len(lines)/2, 0, 0, 0, 0
+
+	arc = measure_arc(img, circle[2], (circle[0], circle[1]))
+
+	print circle[0], circle[1], len(lines)/2, 0, arc, 0, 0
 
 	#  cv.imshow("Probabilistic Line Transform", src)
 	#  cv.imshow("Canny", canny)
@@ -53,11 +54,75 @@ def detect_circle(img):
 
 	if circles is not None:
 		circles = np.uint16(np.around(circles))
-		return circles[0][0][0], circles[0][0][1]
+		return circles[0][0]
 
-	return 0, 0
+	return [0, 0, 0]
+
+
+def measure_arc(img, r, c):
+	r += 2
+	phi = 10
+
+	while True:
+		x, y = np.int0(pol2car(r, phi))
+		x += c[0]
+		y += c[1]
+		if img[y, x] > 128:
+			break
+
+		phi += 2
+		if phi == 360:
+			return 360
+
+	arcs = []
+	while True:
+		curr_phi = 0
+		max_phi = 0
+		p = phi + 1
+		while True:
+			x, y = np.int0(pol2car(r, p))
+			x += c[0]
+			y += c[1]
+
+			if img[y, x] < 255:
+				curr_phi += 1
+			else:
+				if curr_phi > max_phi:
+					max_phi = curr_phi
+				curr_phi = 0
+
+			if p == phi:
+				break
+
+			#  print curr_phi
+			#  copy = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+			#  cv.circle(copy, (x, y), 1, (0, 0, 255), 2)
+			#  cv.imshow("rotate", copy)
+			#  cv.waitKey()
+
+			p += 1
+			if p >= 360:
+				p = 0
+
+
+		if max_phi == 0:
+			break
+
+		arcs.append(max_phi)
+		r += 5
+
+	return max(arcs)
+
+
+def car2pol(x, y):
+	return np.sqrt(x**2 + y**2), np.arctan2(y, x)
+
+
+def pol2car(r, p):
+	p = np.radians(p)
+	return r * np.cos(p), r * np.sin(p)
 
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+	main()
 
