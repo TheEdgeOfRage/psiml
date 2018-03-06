@@ -11,22 +11,26 @@ import os
 
 def main():
 	#  root = raw_input()
-	k = 1
-	#  for k in range(1, 11):
-	root = 'set/example_' + str(k)
-	filename = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
-	#  filename.sort()
-	filename = os.path.join(root, filename[0])
+	#  k = 2
+	for k in range(1, 11):
+		root = 'set/example_' + str(k)
+		filename = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
+		#  filename.sort()
+		filename = os.path.join(root, filename[0])
 
-	img = cv.imread(filename, 0)
-	circle = detect_circle(img)
-	if circle is None:
-		print 0, 0, 9, 1, 120, 2, 21
-		return
+		img = cv.imread(filename, 0)
+		gauss = cv.GaussianBlur(img, (9, 9), 0);
+		img = cv.addWeighted(img, 1.5, gauss, 0.5, 0);
+		circle = detect_circle(img)
+		#  circle = old_circle(img)
+		if circle is None:
+			print 0, 0, 9, 1, 120, 2, 21
+			return
 
-	max_arc, spokes, broken = circulate(img, circle[2], (circle[0], circle[1]))
-	print circle[0], circle[1], spokes, broken, max_arc, 2, 21
-	print_solution(k)
+		print circle
+		max_arc, spokes, broken = circulate(img, circle[2], (circle[0], circle[1]))
+		print circle[0], circle[1], spokes, broken, max_arc, 3, 21
+		print_solution(k)
 	return 0
 
 
@@ -36,37 +40,31 @@ def print_solution(i):
 		print
 
 
-def detect_lines(img):
-	linesp = cv.houghlinesp(img, 1, np.pi / 180, 45, none, 30, 50)
-	lines = []
-
-	if linesp is not none:
-		for i in range(0, len(linesp)):
-			lines.append(linesp[i][0])
-
-	return lines
-
-
 def detect_circle(img):
 	rows = img.shape[0]
 
-	gauss = cv.GaussianBlur(img, (5, 5), 0);
-	img = cv.addWeighted(img, 2, gauss, -1, 0);
-
-	#  kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-	#  img = cv.filter2D(img, -1, kernel)
-
-	circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT, 1, 10, param1=50, param2=30, minRadius=10, maxRadius=50)
-	#  circles = cv.Houghcircles(img, cv.HOUGH_GRADIENT, 1, 10, 50, 30, 1, 10, 0)
+	circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT, 1, 10, param1=60, param2=30, minRadius=10, maxRadius=50)
 
 	if circles is not None:
 		circles = np.uint16(np.around(circles))
-		cpy = img.copy()
-		cpy = cv.cvtColor(cpy, cv.COLOR_GRAY2BGR)
-		cv.circle(cpy, (circles[0][0][0], circles[0][0][1]), circles[0][0][2], (0, 0, 255), 1)
-		cv.imshow('cpy', cpy)
-		cv.waitKey()
+		#  cpy = img.copy()
+		#  cpy = cv.cvtColor(cpy, cv.COLOR_GRAY2BGR)
+		#  cv.circle(cpy, (circles[0][0][0], circles[0][0][1]), circles[0][0][2], (0, 0, 255), 1)
+		#  cv.imshow('cpy', cpy)
+		#  cv.waitKey()
 
+		return circles[0][0]
+
+	return None
+
+
+def old_circle(img):
+	rows = img.shape[0]
+	circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT, 1, rows/16, 100, 100, 30, 1, 50)
+	#  print circles
+
+	if circles is not None:
+		circles = np.uint16(np.around(circles))
 		return circles[0][0]
 
 	return None
@@ -100,8 +98,11 @@ def circulate(img, R, c):
 			x, y = np.int0(pol2car(r, p))
 			x += c[0]
 			y += c[1]
+			p = 0 if p == 359 else p + 1
+			if p == phi:
+				final = True
 
-			if img[y, x] < 255:
+			if img[y, x] < 50:
 				last_spoke = False
 				curr_phi += 1
 				if p in spokes and spokes[p] == 1 and img[y, x] == 0:
@@ -126,10 +127,6 @@ def circulate(img, R, c):
 				if final:
 					break
 
-			p = 0 if p == 359 else p + 1
-			if p == phi:
-				final = True
-
 		if max_phi == 0:
 			break
 
@@ -146,7 +143,7 @@ def circulate(img, R, c):
 				spokes[s] = stage1[s]
 
 		arcs.append(max_phi)
-		r += 5
+		r += 10
 
 	broken = 0
 	for s in spokes:
