@@ -23,8 +23,15 @@ def main():
 	src = cv.imread(filename)
 	wrapper(src)
 
+	#  for i in range(1, 11):
+		#  filename = 'set/A' + str(i) + '.png'
+		#  src = cv.imread(filename)
+		#  wrapper(src)
+		#  print_solution(i)
+
 
 def wrapper(src):
+	src = filter_pink(src)
 	box = find_resistor(src)
 	if box is None:
 		print '221G'
@@ -47,6 +54,21 @@ def wrapper(src):
 	code = code.replace('G', '') + '222'
 	code = code[:3] + 'G'
 	print code
+
+
+def print_solution(i):
+	with open('outputs/' + str(i) + '.out', 'r') as f:
+		print f.read()
+		print
+
+
+def filter_pink(img):
+	hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+	low = np.array([165, 0, 160])
+	high = np.array([180, 170, 255])
+	mask = cv.inRange(hsv, low, high)
+	mask = cv.bitwise_not(mask)
+	return cv.bitwise_and(img, img, mask=mask)
 
 
 def rotate_pt(box, off, phi):
@@ -81,10 +103,12 @@ def contrast(img, clipLimit):
 
 
 def find_resistor(img):
+	src = img.copy()
 	img = contrast(img, 1.6)
 	img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 	img = cv.medianBlur(img, 21)
 	img = cv.Canny(img, 60, 100)
+
 	kernel = np.ones((9, 9), np.uint8)
 	img = cv.dilate(img, kernel, 2)
 	img = cv.erode(img, kernel, 2)
@@ -96,6 +120,9 @@ def find_resistor(img):
 		max_contour = contours[ind]
 		rect = cv.minAreaRect(max_contour)
 		rect = cv.boxPoints(rect)
+		#  cv.drawContours(src, [np.int0(rect)], 0, (0, 0, 255), 2)
+		#  cv.imshow('src', src)
+		#  cv.waitKey()
 
 	return rect
 
@@ -126,8 +153,8 @@ def crop_resistor(img, box):
 	h = box[1][1] - box[0][1]
 	y += int(0.2 * h)
 	h = int(0.6 * h)
-	x += int(0.15 * w)
-	w = int(0.7 * w)
+	x += int(0.1 * w)
+	w = int(0.8 * w)
 	img = img[y:(y+h), x:(x+w)]
 
 	return img
@@ -138,7 +165,8 @@ def simplify_image(img):
 	#  img = cv.filter2D(img, -1, kernel)
 
 	h, w, c = img.shape
-	simple = np.zeros((1, w, 3), np.uint8)
+	simple_height = 5
+	simple = np.zeros((simple_height, w, 3), np.uint8)
 	for i in range(w):
 		sumB = 0
 		sumR = 0
@@ -148,14 +176,9 @@ def simplify_image(img):
 			sumR += img[j, i, 1]
 			sumG += img[j, i, 2]
 
-		simple[0, i] = [ sumB/h, sumR/h, sumG/h ]
-		#  for k in range(10):
-			#  simple[k, i] = [ sumB/h, sumR/h, sumG/h ]
+		for k in range(simple_height):
+			simple[k, i] = [ sumB/h, sumR/h, sumG/h ]
 
-	N = 16;
-	simple  /= N;
-	simple  *= N;
-	#  simple = cv.filter2D(simple, -1, kernel)
 	return simple
 
 
@@ -252,30 +275,30 @@ colors = {
 	'yellow': {
 		'lowH': 20,
 		'highH': 32,
-		'lowS': 190,
+		'lowS': 180,
 		'highS': 255,
 		'lowV': 100,
-		'highV': 200,
+		'highV': 230,
 	},
 	'green': {
-		'lowH': 45,
+		'lowH': 40,
 		'highH': 80,
-		'lowS': 80,
+		'lowS': 60,
 		'highS': 255,
 		'lowV': 30,
 		'highV': 255,
 	},
 	'blue': {
 		'lowH': 81,
-		'highH': 120,
-		'lowS': 120,
+		'highH': 125,
+		'lowS': 40,
 		'highS': 255,
 		'lowV': 30,
 		'highV': 255,
 	},
 	'purple': {
 		'lowH': 140,
-		'highH': 169,
+		'highH': 164,
 		'lowS': 100,
 		'highS': 220,
 		'lowV': 10,
@@ -285,8 +308,8 @@ colors = {
 		'lowH': 0,
 		'highH': 40,
 		'lowS': 0,
-		'highS': 15,
-		'lowV': 120,
+		'highS': 83,
+		'lowV': 100,
 		'highV': 220,
 	},
 	'white': {
@@ -300,10 +323,10 @@ colors = {
 	'gold': {
 		'lowH': 10,
 		'highH': 20,
-		'lowS': 160,
+		'lowS': 150,
 		'highS': 230,
 		'lowV': 100,
-		'highV': 160,
+		'highV': 175,
 	},
 }
 
