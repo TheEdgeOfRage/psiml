@@ -38,7 +38,7 @@ def main():
 	if code[0] is 'G':
 		code = code[::-1]
 
-	code = code.replace("G", "") + '888'
+	code = code.replace("G", "") + '222'
 	code = code[:3] + 'G'
 	print code
 
