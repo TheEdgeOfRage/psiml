@@ -17,28 +17,34 @@ import itertools as it
 import numpy as np
 
 def main():
+	#  for k in range(10, 11):
 	#  filename = 'set/A' + str(k) + '.png'
 	filename = raw_input()
 	src = cv.imread(filename)
+	wrapper(src)
 
+
+def wrapper(src):
 	box = find_resistor(src)
-
 	if box is None:
 		print '221G'
 		return
 
 	src = crop_resistor(src, box)
-
 	if len(src) is 0:
 		print '221G'
 		return
 
 	simple = simplify_image(src)
 	code = find_bands(simple)
+	if code is '':
+		print '221G'
+		return
+
 	if code[0] is 'G':
 		code = code[::-1]
 
-	code = code.replace("G", "") + '222'
+	code = code.replace('G', '') + '222'
 	code = code[:3] + 'G'
 	print code
 
@@ -183,22 +189,25 @@ def check_color(px):
 	pColors['9'] = np.mean(check_color_range(px[0], px[1], px[2], 'white') or[ 0 ])
 	pColors['G'] = np.mean(check_color_range(px[0], px[1], px[2], 'gold') or[ 0 ])
 	best = max(pColors, key=pColors.get)
-	best = None if pColors[best] < 0.1 else best
+	best = None if pColors[best] < 0.05 else best
 	return best
 
 
 def check_color_range(h, s, v, color_str):
 	col = colors[color_str]
-	if h >= col['lowH'] and h <= col['highH'] and s >= col['lowS'] and s <= col['highS'] and v >= col['lowV'] and v <= col['highV']:
-		if color_str == 'red':
+	if color_str == 'red':
+		if ((h >= col['lowH'] and h <= 0) or (h >= 0 and h <= col['highH'])) and s >= col['lowS'] and s <= col['highS'] and v >= col['lowV'] and v <= col['highV']:
 			diff = 180 - col['lowH']
 			h = calculate_offset(h + diff, col['highH'] + diff, 0)
-		else:
+			s = calculate_offset(s, col['highS'], col['lowS'])
+			v = calculate_offset(v, col['highV'], col['lowV'])
+			return [h, s, v]
+	else:
+		if h >= col['lowH'] and h <= col['highH'] and s >= col['lowS'] and s <= col['highS'] and v >= col['lowV'] and v <= col['highV']:
 			h = calculate_offset(h, col['highH'], col['lowH'])
-
-		s = calculate_offset(s, col['highS'], col['lowS'])
-		v = calculate_offset(v, col['highV'], col['lowV'])
-		return [h, s, v]
+			s = calculate_offset(s, col['highS'], col['lowS'])
+			v = calculate_offset(v, col['highV'], col['lowV'])
+			return [h, s, v]
 	return None
 
 
@@ -254,14 +263,14 @@ colors = {
 		'lowS': 80,
 		'highS': 255,
 		'lowV': 30,
-		'highV': 150,
+		'highV': 255,
 	},
 	'blue': {
-		'lowH': 90,
+		'lowH': 81,
 		'highH': 120,
-		'lowS': 111,
+		'lowS': 120,
 		'highS': 255,
-		'lowV': 50,
+		'lowV': 30,
 		'highV': 255,
 	},
 	'purple': {
@@ -274,18 +283,18 @@ colors = {
 	},
 	'gray': {
 		'lowH': 0,
-		'highH': 80,
+		'highH': 40,
 		'lowS': 0,
-		'highS': 30,
-		'lowV': 90,
+		'highS': 15,
+		'lowV': 120,
 		'highV': 220,
 	},
 	'white': {
 		'lowH': 0,
-		'highH': 85,
+		'highH': 40,
 		'lowS': 0,
-		'highS': 30,
-		'lowV': 150,
+		'highS': 15,
+		'lowV': 221,
 		'highV': 255,
 	},
 	'gold': {
