@@ -16,18 +16,21 @@ import cv2 as cv
 import itertools as it
 import numpy as np
 
+
 def main():
 	#  for k in range(10, 11):
 	#  filename = 'set/A' + str(k) + '.png'
-	filename = raw_input()
-	src = cv.imread(filename)
-	wrapper(src)
+	#  filename = raw_input()
+	#  src = cv.imread(filename)
+	#  wrapper(src)
 
-	#  for i in range(1, 11):
-		#  filename = 'set/A' + str(i) + '.png'
-		#  src = cv.imread(filename)
-		#  wrapper(src)
-		#  print_solution(i)
+	#  i = 9
+	for i in range(2, 11):
+		filename = 'private/set/B' + str(i) + '.png'
+		src = cv.imread(filename)
+		wrapper(src)
+		cv.waitKey()
+		print_solution(i)
 
 
 def wrapper(src):
@@ -57,7 +60,7 @@ def wrapper(src):
 
 
 def print_solution(i):
-	with open('outputs/' + str(i) + '.out', 'r') as f:
+	with open('private/outputs/B' + str(i) + '.txt', 'r') as f:
 		print f.read()
 		print
 
@@ -122,7 +125,6 @@ def find_resistor(img):
 		rect = cv.boxPoints(rect)
 		#  cv.drawContours(src, [np.int0(rect)], 0, (0, 0, 255), 2)
 		#  cv.imshow('src', src)
-		#  cv.waitKey()
 
 	return rect
 
@@ -156,6 +158,7 @@ def crop_resistor(img, box):
 	x += int(0.1 * w)
 	w = int(0.8 * w)
 	img = img[y:(y+h), x:(x+w)]
+	#  cv.imshow('img', img)
 
 	return img
 
@@ -191,6 +194,7 @@ def find_bands(img):
 	#  while hsv[0, i][0] >= 0 and i < w:
 	band_colors = []
 	for i in range(w):
+		#  print i, hsv[0, i]
 		band_colors.append(check_color(hsv[0, i]))
 
 	band_colors = [k for k, g in it.groupby(band_colors) if sum(1 for _ in g) > 2]
@@ -298,11 +302,11 @@ colors = {
 	},
 	'purple': {
 		'lowH': 140,
-		'highH': 164,
-		'lowS': 100,
-		'highS': 220,
+		'highH': 175,
+		'lowS': 170,
+		'highS': 255,
 		'lowV': 10,
-		'highV': 150,
+		'highV': 210,
 	},
 	'gray': {
 		'lowH': 0,
